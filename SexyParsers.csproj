@@ -39,9 +39,19 @@
   </ItemGroup>
 
   <ItemGroup>
+  
     <Reference Include="BlossomLib">
       <HintPath>Dependencies\BlossomLib.dll</HintPath>
     </Reference>
+	
+	    <Reference Include="PopCapResManager">
+      <HintPath>Dependencies\PopCapResManager.dll</HintPath>
+    </Reference>
+	
+	    <Reference Include="SexyCryptor">
+      <HintPath>Dependencies\SexyCryptor.dll</HintPath>
+    </Reference>
+	
   </ItemGroup>
 
 </Project>
