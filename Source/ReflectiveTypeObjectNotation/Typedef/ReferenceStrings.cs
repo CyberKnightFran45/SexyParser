@@ -6,13 +6,28 @@ namespace SexyParsers.ReflectiveTypeObjectNotation
 
 internal static class ReferenceStrings
 {
-/// <summary> Native strings </summary>
+// Native strings
 
-private static List<string> nativeStrs = new();
+private static readonly Dictionary<string, int> NativeLookup;
 
-/// <summary> Unicode strings </summary>
+private static readonly List<string> NativeStrings;
 
-private static List<string> unicodeStrs = new();
+// Unicode strings
+
+private static readonly Dictionary<string, int> UnicodeLookup;
+
+private static readonly List<string> UnicodeStrings;
+
+// Init
+
+static ReferenceStrings()
+{
+NativeLookup = new();
+NativeStrings = new();
+
+UnicodeLookup = new();
+UnicodeStrings = new();
+}
 
 /** <summary> Adds a ReferenceString to the List. </summary> 
 
@@ -22,10 +37,16 @@ internal static void Add(string str, bool isUnicode)
 {
 
 if(isUnicode)
-unicodeStrs.Add(str);
+{
+UnicodeLookup.TryAdd(str, UnicodeStrings.Count);
+UnicodeStrings.Add(str);
+}
 
 else
-nativeStrs.Add(str);
+{
+NativeLookup.TryAdd(str, NativeStrings.Count);
+NativeStrings.Add(str);
+}
 
 }
 
@@ -33,9 +54,11 @@ nativeStrs.Add(str);
 
 internal static void Clear()
 {
-nativeStrs.Clear();
-
-unicodeStrs.Clear();
+NativeLookup.Clear();
+NativeStrings.Clear();
+	
+UnicodeLookup.Clear();
+UnicodeStrings.Clear();
 }
 
 /** <summary> Gets the Index of a ReferenceString in the List. </summary>
@@ -46,10 +69,12 @@ unicodeStrs.Clear();
 
 internal static int IndexOf(string str, bool isUnicode)
 {
-return isUnicode ? unicodeStrs.IndexOf(str) : nativeStrs.IndexOf(str);
+var dict = isUnicode ? UnicodeLookup : NativeLookup;
+ 
+return dict.TryGetValue(str, out int index) ? index : -1;
 }
 
-/** <summary> Gets a String from the List by its Index. </summary>
+/** <summary> Gets string from List by Index. </summary>
 
 <param name = "index"> The String index. </param>
 
@@ -57,18 +82,18 @@ return isUnicode ? unicodeStrs.IndexOf(str) : nativeStrs.IndexOf(str);
 
 internal static string Get(int index, bool isUnicode) 
 {
-return isUnicode ? unicodeStrs[index] : nativeStrs[index];
+return isUnicode ? UnicodeStrings[index] : NativeStrings[index];
 }
 
 /** <summary> Checks if a String is Contained in the List. </summary>
 
 <param name = "str"> The String to Check. </param>
 
-<returns> <b>true</b> if the String exists in the List; otherwise, <b>false</b> </returns> */
+<returns> <b>true</b> if the String exists; otherwise, <b>false</b> </returns> */
 
 internal static bool Contain(string str, bool isUnicode)
 {
-return isUnicode ? unicodeStrs.Contains(str) : nativeStrs.Contains(str);
+return isUnicode ? UnicodeLookup.ContainsKey(str) : NativeLookup.ContainsKey(str);
 }
 
 }
