@@ -24,10 +24,10 @@ private const uint FOOTER = 0x444F4E45;
 
 // Encode core
 
-private static NativeBuffer EncodeCore(NativeJsonReader reader)
+private static NativeBuffer EncodeCore(NativeJsonReader reader, out ulong pos)
 {
 NativeBuffer buffer = new(SizeT.ONE_MEGABYTE * 64);
-ulong pos = 0;
+pos = 0;
 
 TraceLogger.WriteActionStart("Writting header...");
 
@@ -51,7 +51,6 @@ pos += 4;
 
 TraceLogger.WriteActionEnd();
 
-buffer.Realloc(pos);
 ReferenceStrings.Clear();
 
 return buffer;
@@ -62,7 +61,7 @@ return buffer;
 public static void EncodeStream(Stream input, Stream output, bool useEncryption = false)
 {
 using NativeJsonReader jsonReader = new(input);
-using var rtonBuffer = EncodeCore(jsonReader);
+using var rtonBuffer = EncodeCore(jsonReader, out var rawSize);
 
 if(useEncryption)
 {
@@ -81,7 +80,7 @@ TraceLogger.WriteLine();
 }
 
 else
-output.Write(rtonBuffer.AsSpan() );
+output.Write(rtonBuffer.AsSpan(0, (int)rawSize) );
 
 }
 
