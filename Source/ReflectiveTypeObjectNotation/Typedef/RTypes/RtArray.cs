@@ -32,7 +32,7 @@ for(int i = 0; i < elementsCount; i++)
 byte elementType = buffer.GetUInt8(pos);
 pos++;
 
-RtObject.Decode(buffer, ref pos, writer, elementType);
+RtObject.DecodeRToken(buffer, ref pos, writer, elementType);
 }
 
 byte mArrayEnd = buffer.GetUInt8(pos);
@@ -67,7 +67,7 @@ for(int i = 0; i < elementsCount; i++)
 {
 reader.ReadToken();
 
-RtObject.EncodeValue(reader, buffer, ref pos);
+RtObject.EncodeJToken(reader, buffer, ref pos);
 }
 
 while(reader.CurrentTokenType != JsonTokenType.EndArray)
