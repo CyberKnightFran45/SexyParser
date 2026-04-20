@@ -18,7 +18,7 @@ pos++;
 
 if(mArrayStart != RTypeId.ARRAY_START)
 {
-TraceLogger.WriteError($"Unknown Array id: {mArrayStart:X2} @ {pos} (Expected: {RTypeId.ARRAY_START:X2})");
+TraceLogger.WriteError($"Unknown Array start: {mArrayStart:X2} @ {pos} (Expected: {RTypeId.ARRAY_START:X2})");
 return;
 }
 
@@ -89,7 +89,9 @@ buffer.SetUInt8(pos, RTypeId.ARRAY_START);
 pos++;
 
 ulong arrayPos = 0;
-using NativeBuffer rawArray = new(SizeT.ONE_MEGABYTE * 16);
+
+long bytesRemaining = reader.Length - reader.Position;
+using NativeBuffer rawArray = new(bytesRemaining);
 
 int elementsCount = EncodeJArray(reader, rawArray, ref arrayPos);
 pos += (ulong)buffer.SetVarInt(pos, elementsCount);
