@@ -6,35 +6,9 @@ namespace SexyParsers.ReflectiveTypeObjectNotation
 
 internal static class RtObject
 {
-// Encode JSON object and writes its Tokens as RTON </summary>
-
-private static void Encode(NativeJsonReader reader, NativeBuffer buffer, ref ulong pos)
-{
-
-while(reader.ReadToken() )
-{
-
-if(reader.CurrentTokenType == JsonTokenType.EndObject)
-break;
-
-if(reader.CurrentTokenType != JsonTokenType.PropertyName)
-throw new JsonException("Expected property name");
-
-RtNativeString.Write(reader.CurrentPropertyName, buffer, ref pos);
-
-if(!reader.ReadToken() )
-throw new JsonException("Unexpected end after property");
-
-EncodeValue(reader, buffer, ref pos);
-}
-    
-buffer.SetUInt8(pos, RTypeId.OBJECT_END);
-pos++;
-}
-
 // Encode json token
 
-internal static void EncodeValue(NativeJsonReader reader, NativeBuffer buffer, ref ulong pos)
+internal static void EncodeJToken(NativeJsonReader reader, NativeBuffer buffer, ref ulong pos)
 {
 
 switch(reader.CurrentTokenType)
@@ -44,7 +18,7 @@ case JsonTokenType.StartObject:
 buffer.SetUInt8(pos, RTypeId.OBJECT_START);
 pos++;
 
-Encode(reader, buffer, ref pos);
+EncodeJObject(reader, buffer, ref pos);
 break;
 
 case JsonTokenType.StartArray:
@@ -77,6 +51,31 @@ break;
 
 }
 
+// Encode JSON object and writes its Tokens as RTON </summary>
+
+private static void EncodeJObject(NativeJsonReader reader, NativeBuffer buffer, ref ulong pos)
+{
+
+while(reader.ReadToken() )
+{
+
+if(reader.CurrentTokenType == JsonTokenType.EndObject)
+break;
+
+if(reader.CurrentTokenType != JsonTokenType.PropertyName)
+throw new JsonException("Expected property name");
+
+RtNativeString.Write(reader.CurrentPropertyName, buffer, ref pos);
+
+if(!reader.ReadToken() )
+throw new JsonException("Unexpected end after property");
+
+EncodeJToken(reader, buffer, ref pos);
+}
+    
+buffer.SetUInt8(pos, RTypeId.OBJECT_END);
+pos++;
+}
 
 /** <summary> Reads a root JSON and writes its contents to RTON. </summary>
 
@@ -85,24 +84,78 @@ break;
 
 internal static void Write(NativeJsonReader reader, NativeBuffer buffer, ref ulong pos)
 {
-reader.ReadToken(); // Root element (ignore)
+reader.ReadToken(); // First element (ignore json root, parse if Array)
 
-if(reader.CurrentTokenType != JsonTokenType.StartObject)
+switch(reader.CurrentTokenType)
 {
-TraceLogger.WriteError("JSON root must be an object");
+case JsonTokenType.StartObject:
+EncodeJObject(reader, buffer, ref pos);
+break;
+
+case JsonTokenType.StartArray:
+RtArray.Write(reader, buffer, ref pos);
+break;
+
+default:
+TraceLogger.WriteError("JSON root must be an object or array");
 return;
 }
 
-Encode(reader, buffer, ref pos);
 }
 
-/** <summary> Decodes an RTON Object and writes it to JSON. </summary>
+// Decode Rton property name
 
-<param name = "buffer"> The RTON reader. </param>
-<param name = "writer"> The JSON Writer. </param>
+private static void DecodeRProp(NativeBuffer buffer, ref ulong pos, Utf8JsonWriter writer, byte flags)
+{
+
+switch(flags)
+{
+case RTypeId.NATIVE_STRING:
+RtNativeString.Read(buffer, ref pos, writer, true);
+break;
+
+case RTypeId.UNICODE_STRING:
+RtUnicodeString.Read(buffer, ref pos, writer, true);
+break;
+
+case RTypeId.ID_STRING:
+RtIdString.Read(buffer, ref pos, writer, true, false);
+break;
+
+case RTypeId.ID_STRING_NULL:
+RtIdString.Read(buffer, ref pos, writer, true, true);
+break;
+
+case RTypeId.NATIVE_STRING_VALUE:
+RtNativeString.ReadCached(buffer, ref pos, writer, false, true);
+break;
+
+case RTypeId.NATIVE_STRING_INDEX:
+RtNativeString.ReadCached(buffer, ref pos, writer, true, true);
+break;
+
+case RTypeId.UNICODE_STRING_VALUE:
+RtUnicodeString.ReadCached(buffer, ref pos, writer, false, true);
+break;
+
+case RTypeId.UNICODE_STRING_INDEX:
+RtUnicodeString.ReadCached(buffer, ref pos, writer, true, true);
+break;
+
+default:
+TraceLogger.WriteError($"Unknown RType identifier for property: {flags:X2} @ {pos}");
+return;
+}
+
+}
+
+/** <summary> Decodes RTON Token and write its JSON equivalent. </summary>
+
+<param name = "buffer"> RTON buffer. </param>
+<param name = "writer"> JSON Writer. </param>
 <param name = "flags"> The Value Type. </param> */
 
-internal static void Decode(NativeBuffer buffer, ref ulong pos, Utf8JsonWriter writer, byte flags)
+internal static void DecodeRToken(NativeBuffer buffer, ref ulong pos, Utf8JsonWriter writer, byte flags)
 {
 
 switch(flags)
@@ -302,7 +355,7 @@ writer.WriteNumberValue(0.0);
 break;
 
 default:
-TraceLogger.WriteError($"Unknown RtType id: {flags:X2} @ {pos}");
+TraceLogger.WriteError($"Unknown RtType id for value: {flags:X2} @ {pos}");
 return;
 }
 
@@ -315,6 +368,16 @@ return;
 
 internal static void Read(NativeBuffer buffer, ref ulong pos, Utf8JsonWriter writer)
 {
+byte first = buffer.GetUInt8(pos);
+
+if(first == RTypeId.ARRAY)
+{
+pos++;
+RtArray.Read(buffer, ref pos, writer);
+
+return;
+}
+
 writer.WriteStartObject();
 
 while(true)
@@ -325,49 +388,12 @@ pos++;
 if(keyFlags == RTypeId.OBJECT_END)
 break;
 
-switch(keyFlags)
-{
-case RTypeId.NATIVE_STRING:
-RtNativeString.Read(buffer, ref pos, writer, true);
-break;
-
-case RTypeId.UNICODE_STRING:
-RtUnicodeString.Read(buffer, ref pos, writer, true);
-break;
-
-case RTypeId.ID_STRING:
-RtIdString.Read(buffer, ref pos, writer, true, false);
-break;
-
-case RTypeId.ID_STRING_NULL:
-RtIdString.Read(buffer, ref pos, writer, true, true);
-break;
-
-case RTypeId.NATIVE_STRING_VALUE:
-RtNativeString.ReadCached(buffer, ref pos, writer, false, true);
-break;
-
-case RTypeId.NATIVE_STRING_INDEX:
-RtNativeString.ReadCached(buffer, ref pos, writer, true, true);
-break;
-
-case RTypeId.UNICODE_STRING_VALUE:
-RtUnicodeString.ReadCached(buffer, ref pos, writer, false, true);
-break;
-
-case RTypeId.UNICODE_STRING_INDEX:
-RtUnicodeString.ReadCached(buffer, ref pos, writer, true, true);
-break;
-
-default:
-TraceLogger.WriteError($"Unknown RType identifier: {keyFlags:X2} @ {pos}");
-return;
-}
+DecodeRProp(buffer, ref pos, writer, keyFlags);
 
 byte valueFlags = buffer.GetUInt8(pos);
 pos++;
 
-Decode(buffer, ref pos, writer, valueFlags);
+DecodeRToken(buffer, ref pos, writer, valueFlags);
 }
 
 writer.WriteEndObject();
