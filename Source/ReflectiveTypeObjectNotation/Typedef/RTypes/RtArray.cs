@@ -6,7 +6,7 @@ namespace SexyParsers.ReflectiveTypeObjectNotation
 
 internal static class RtArray
 {
-/** <summary> Reads a RTON Array and writes it to JSON. </summary>
+/** <summary> Reads a RTON Array and writes it to its JSON equivalent </summary>
 
 <param name = "buffer"> The RTON Reader </param>
 <param name = "writer"> The JSON Writer. </param> */
@@ -47,7 +47,35 @@ return;
 writer.WriteEndArray();
 }
 
-/** <summary> Reads a JSON Array and Writes it to RTON. </summary>
+// Encode json array
+
+private static int EncodeJArray(NativeJsonReader reader, NativeBuffer buffer, ref ulong pos)
+{
+int count = 0;
+
+while(reader.ReadToken() )
+{
+
+switch(reader.CurrentTokenType)
+{
+case JsonTokenType.EndArray:
+return count;
+
+default:
+RtObject.EncodeJToken(reader, buffer, ref pos);
+
+count++;
+break;
+}
+
+}
+
+TraceLogger.WriteError("Unexpected end of JSON before EndArray.");
+
+return count;
+}
+
+/** <summary> Reads a JSON Array and Writes its equivalent as RTON </summary>
 
 <param name = "reader"> The JSON reader. </param>
 <param name = "writer"> The RTON writer. </param> */
@@ -60,26 +88,14 @@ pos++;
 buffer.SetUInt8(pos, RTypeId.ARRAY_START);
 pos++;
 
-int elementsCount = reader.CountArrayElements();
+ulong arrayPos = 0;
+using NativeBuffer rawArray = new(SizeT.ONE_MEGABYTE * 16);
+
+int elementsCount = EncodeJArray(reader, rawArray, ref arrayPos);
 pos += (ulong)buffer.SetVarInt(pos, elementsCount);
 
-for(int i = 0; i < elementsCount; i++)
-{
-reader.ReadToken();
-
-RtObject.EncodeJToken(reader, buffer, ref pos);
-}
-
-while(reader.CurrentTokenType != JsonTokenType.EndArray)
-{
-
-if(!reader.ReadToken() )
-{
-TraceLogger.WriteError("Unexpected end of JSON before EndArray.");
-return;
-}
-
-}
+buffer.CopyFrom(rawArray, 0, pos, arrayPos);
+pos += arrayPos;
 
 buffer.SetUInt8(pos, RTypeId.ARRAY_END);
 pos++;
