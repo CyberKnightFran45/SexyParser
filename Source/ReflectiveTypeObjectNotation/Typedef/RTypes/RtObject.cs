@@ -284,7 +284,7 @@ break;
 
 case RTypeId.VARLONG:
 
-long vInt64 = buffer.GetVarInt(pos, out int varLen64);
+long vInt64 = buffer.GetVarInt64(pos, out int varLen64);
 pos += (ulong)varLen64;
 
 writer.WriteNumberValue(vInt64);
@@ -300,7 +300,7 @@ break;
 
 case RTypeId.ZIGZAG64:
 
-long zInt64 = buffer.GetZigZag(pos, out int zLen64);
+long zInt64 = buffer.GetZigZag64(pos, out int zLen64);
 pos += (ulong)zLen64;
 
 writer.WriteNumberValue(zInt64);
