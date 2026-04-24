@@ -292,7 +292,7 @@ break;
 
 case RTypeId.UVARLONG:
 
-var vUInt64 = (ulong)buffer.GetVarInt(pos, out int uVarLen64);
+var vUInt64 = (ulong)buffer.GetVarInt64(pos, out int uVarLen64);
 pos += (ulong)uVarLen64;
 
 writer.WriteNumberValue(vUInt64);
