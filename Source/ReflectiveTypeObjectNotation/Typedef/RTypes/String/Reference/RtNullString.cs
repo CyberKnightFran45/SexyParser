@@ -29,7 +29,13 @@ return true;
 
 internal static void Read(Utf8JsonWriter writer, bool isPropertyName)
 {
-JsonHelper.WriteString(writer, NULL_STR_REF, isPropertyName);
+
+if(isPropertyName)
+JsonHelper.WriteString(writer, NULL_STR_REF, true);
+
+else
+writer.WriteNullValue();
+
 }
 
 }
